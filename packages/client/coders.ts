@@ -1,4 +1,4 @@
-import { deserializeSync, serializeSync } from "@xmcl/nbt";
+import { deserialize, serializeSync } from "@xmcl/nbt";
 import ByteBuffer from "bytebuffer";
 import long from "long";
 
@@ -14,7 +14,7 @@ export interface SlotData {
  */
 export interface Coder<T> {
     readonly encode: (buffer: ByteBuffer, data: T, context?: any) => void;
-    readonly decode: (buffer: ByteBuffer, context?: any) => T;
+    readonly decode: (buffer: ByteBuffer, context?: any) => Promise<T>;
 }
 
 export const VarInt: Coder<number> = {
@@ -154,7 +154,7 @@ export const Json: Coder<any> = {
 
 
 export const Slot: Coder<SlotData> = {
-    decode: (buffer, inst) => {
+    decode: async (buffer, inst) => {
         const blockId = Short.decode(buffer, 0);
         if (blockId === -1) { return { blockId }; }
         const itemCount = Byte.decode(buffer) || undefined;
@@ -170,7 +170,7 @@ export const Slot: Coder<SlotData> = {
             blockId,
             itemCount,
             itemDamage,
-            nbt: deserializeSync(Buffer.from(buffer.buffer)),
+            nbt: await deserialize(Buffer.from(buffer.buffer)),
         };
     },
     encode: (buffer, inst) => {

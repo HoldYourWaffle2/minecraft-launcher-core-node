@@ -1,5 +1,5 @@
 import ByteBuffer from "bytebuffer";
-import fileType from "file-type";
+import { fromBuffer } from "file-type";
 import Long from "long";
 import { readUTF8, writeUTF8 } from "./utils";
 import { ungzip, inflate, gunzipSync, gzip, gzipSync, inflateSync, deflateSync, deflate } from "./zlib";
@@ -408,7 +408,7 @@ export async function serialize(object: object, option: SerializationOption = {}
  * @param fileData The nbt binary
  */
 export async function deserialize<T>(fileData: Uint8Array, option: DeserializationOption<T> = {}): Promise<T> {
-    const doUnzip = normalizeCompress(fileData, option.compressed);
+    const doUnzip = await normalizeCompress(fileData, option.compressed);
     const bb = ByteBuffer.wrap(doUnzip === "none"
         ? fileData
         : doUnzip === "gzip"
@@ -431,9 +431,11 @@ export function serializeSync(object: object, option: SerializationOption = {}):
  * Deserialize the nbt binary into json
  * @param fileData The nbt binary
  * @param compressed Should we compress it
+ *
+ * XXX no longer supported as of file-type@13.0.0 (https://github.com/sindresorhus/file-type/releases/tag/v13.0.0)
  */
 export function deserializeSync<T>(fileData: Uint8Array, option: DeserializationOption<T> = {}): T {
-    const doUnzip = normalizeCompress(fileData, option.compressed);
+    const doUnzip = await normalizeCompress(fileData, option.compressed);
     const bb = ByteBuffer.wrap(doUnzip === "none"
         ? fileData
         : doUnzip === "gzip"
@@ -443,10 +445,10 @@ export function deserializeSync<T>(fileData: Uint8Array, option: Deserialization
     return readRootTag(bb, Object.assign({}, IO, option.io), option.type);
 }
 
-function normalizeCompress(fileData: Uint8Array, compressed?: true | "deflate" | "gzip"): "none" | "gzip" | "deflate" {
+async function normalizeCompress(fileData: Uint8Array, compressed?: true | "deflate" | "gzip"): Promise<"none" | "gzip" | "deflate"> {
     let doUnzip: "none" | "gzip" | "deflate";
     if (typeof compressed === "undefined") {
-        const ft = fileType(fileData);
+        const ft = await fromBuffer(fileData);
         doUnzip = ft !== undefined && ft.ext === "gz" ? "gzip" : "none";
     } else if (typeof compressed === "boolean" && compressed) {
         doUnzip = "gzip";
